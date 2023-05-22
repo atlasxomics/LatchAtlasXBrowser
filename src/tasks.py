@@ -59,7 +59,7 @@ class TaskAPI:
             finally:
                 resp=Response(json.dumps(res),status=sc)
                 resp.headers['Content-Type']='application/json'
-                self.app.logger.info(utils.log(str(sc)))
+                # self.app.logger.info(utils.log(str(sc)))
                 return resp
 
 #### Task status check and retrieve the result if out
@@ -77,7 +77,7 @@ class TaskAPI:
             finally:
                 resp=Response(json.dumps(res),status=sc)
                 resp.headers['Content-Type']='application/json'
-                self.app.logger.info(utils.log(str(sc)))
+                # self.app.logger.info(utils.log(str(sc)))
                 return resp  
 
     def createTaskObject(self, task_id, task_name, task_args, task_kwargs, queue, meta={}):
