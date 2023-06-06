@@ -20,6 +20,7 @@ services:
     #restart: always
     volumes:
       - $PWD/../:/root
+      - /ldata/spatials:/ldata
     environment:
       - TZ=America/New_York
     command: uwsgi --http 0.0.0.0:5000 --module main:app
@@ -64,6 +65,7 @@ services:
     restart: always
     volumes:
       - $PWD/..:/root
+      - /ldata/spatials:/ldata
     environment:
       - TZ=America/New_York
       - RABBITMQ_HOST=root:defpass@rmq:5672

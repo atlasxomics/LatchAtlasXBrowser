@@ -45,6 +45,7 @@ def generate_spatial(self, qcparams, **kwargs):
     config=utils.load_configuration()
     ## config
     temp_dir = config['TEMP_DIRECTORY']
+    latch_dir = '/ldata/'
     ## parameter parsing
     root_dir = qcparams['root_dir']
     metadata = qcparams['metadata']
@@ -59,7 +60,8 @@ def generate_spatial(self, qcparams, **kwargs):
     barcode_root_dir = qcparams['barcode_dir']
     barcode_path = qcparams['barcode_path']
     postB_flag = qcparams['postB_flag']
-    postb_path = "{}{}/{}/".format(temp_dir,root_dir, run_id)
+    latch_flag = qcparams['latch_flag']
+    postb_path = "{}{}/{}/".format(temp_dir,root_dir, run_id) if latch_flag else "{}/{}/".format(latch_dir,run_id)
     
     updating_existing = qcparams.get('updating_existing', False)
 
@@ -72,14 +74,22 @@ def generate_spatial(self, qcparams, **kwargs):
     ### source image path
     allFiles = [i for i in oldFiles if '.json' not in i and 'spatial' not in i]
     ### output directories (S3)
+    ##Images
     spatial_dir = Path(root_dir).joinpath(run_id, 'spatial')
     figure_dir = Path(root_dir).joinpath(run_id, 'spatial', 'figure')
+    La_spatial_dir = Path(latch_dir).joinpath(run_id, 'spatial')
+    La_figure_dir = Path(latch_dir).joinpath(run_id, 'spatial', 'figure')
     ### local temp directories
+    ##/root/Images
     local_spatial_dir = Path(temp_dir).joinpath(spatial_dir)
+    La_local_spatial_dir = Path(latch_dir).joinpath(La_spatial_dir)
     if not local_spatial_dir.exists(): local_spatial_dir.mkdir(parents=True, exist_ok=True)
+    if not La_local_spatial_dir.exists(): La_local_spatial_dir.mkdir(parents=True, exist_ok=True)
     
     local_figure_dir = Path(temp_dir).joinpath(figure_dir)
+    La_local_figure_dir = Path(latch_dir).joinpath(La_figure_dir)
     if not local_figure_dir.exists(): local_figure_dir.mkdir(parents=True, exist_ok=True)
+    if not La_local_figure_dir.exists(): La_local_figure_dir.mkdir(parents=True, exist_ok=True)
 
     ### read barcodes information 
     row_count = 50
@@ -90,8 +100,11 @@ def generate_spatial(self, qcparams, **kwargs):
         barcodes = f.read().splitlines()
     ### save metadata & scalefactors
     local_metadata_filename = local_spatial_dir.joinpath('metadata.json')
+    La_local_metadata_filename = La_local_spatial_dir.joinpath('metadata.json')
     local_scalefactors_filename = local_spatial_dir.joinpath('scalefactors_json.json')
+    La_local_scalefactors_filename = La_local_spatial_dir.joinpath('scalefactors_json.json')
     json.dump(metadata, open(local_metadata_filename,'w'), indent=4,sort_keys=True)
+    json.dump(metadata, open(La_local_metadata_filename,'w'), indent=4,sort_keys=True)
     # adding metadata and scalefactors to the list to be uploaded to S3 Bucket
     
     if not updating_existing:
@@ -100,7 +113,8 @@ def generate_spatial(self, qcparams, **kwargs):
           vals = i.split("/")
           name = vals[len(vals) - 1]
           if "flow" in i.lower() or "fix" in i.lower():
-            os.rename("{}/{}/{}/{}".format(temp_dir,root_dir,run_id,name), str(figure_dir.joinpath(name)))
+            if not latch_flag: os.rename("{}/{}/{}/{}".format(temp_dir,root_dir,run_id,name), str(figure_dir.joinpath(name)))
+            else: os.rename("{}/{}/{}".format(latch_dir,run_id,name), str(figure_dir.joinpath(name)))
           elif "bsa" in i.lower():
               bsa_original = Image.open(temp_dir + bsa_path)
               bsa_img_arr = np.array(bsa_original, np.uint8)
@@ -127,8 +141,12 @@ def generate_spatial(self, qcparams, **kwargs):
         ## high resolution
         tempName_bsa = local_figure_dir.joinpath("postB_BSA.tif")
         tempName_postB = local_figure_dir.joinpath("postB.tif")
+        La_tempName_bsa = La_local_figure_dir.joinpath("postB_BSA.tif")
+        La_tempName_postB = La_local_figure_dir.joinpath("postB.tif")
         cropped_bsa.save(tempName_bsa.__str__())
         cropped_postB.save(tempName_postB.__str__())
+        cropped_bsa.save(La_tempName_bsa.__str__())
+        cropped_postB.save(La_tempName_postB.__str__())
 
         height = cropped_postB.height
         width = cropped_postB.width
@@ -146,16 +164,22 @@ def generate_spatial(self, qcparams, **kwargs):
 
         local_hires_image_path = local_spatial_dir.joinpath('tissue_hires_image.png')
         local_lowres_image_path = local_spatial_dir.joinpath('tissue_lowres_image.png')
+        La_local_hires_image_path = La_local_spatial_dir.joinpath('tissue_hires_image.png')
+        La_local_lowres_image_path = La_local_spatial_dir.joinpath('tissue_lowres_image.png')
         high_res.save(local_hires_image_path.__str__())
         low_res.save(local_lowres_image_path.__str__())
+        high_res.save(La_local_hires_image_path.__str__())
+        low_res.save(La_local_lowres_image_path.__str__())
         scalefactors["tissue_hires_scalef"] = factorHigh
         scalefactors["tissue_lowres_scalef"] = factorLow
     
         json.dump(scalefactors, open(local_scalefactors_filename,'w'), indent=4,sort_keys=True)
+        json.dump(scalefactors, open(La_local_scalefactors_filename,'w'), indent=4,sort_keys=True)
         
     self.update_state(state="PROGRESS", meta={"position": "running" , "progress" : 75})
     ### generate tissue_positions_list.csv
     local_tissue_positions_filename= local_spatial_dir.joinpath('tissue_positions_list.csv')
+    La_local_tissue_positions_filename= local_spatial_dir.joinpath('tissue_positions_list.csv')
     tissue_positions_list = []
     tixel_pos_list= [x['position'] for x  in tixel_positions]
     f=open(local_tissue_positions_filename, 'w')
@@ -172,6 +196,20 @@ def generate_spatial(self, qcparams, **kwargs):
         tissue_positions_list.append(datarow)    
         csvwriter.writerow(datarow)
     f.close()
+    f1=open(La_local_tissue_positions_filename, 'w')
+    csvwriter = csv.writer(f1, delimiter=',',escapechar=' ',quoting=csv.QUOTE_NONE)
+    for idx, b in enumerate(barcodes):
+        colidx = int(idx/row_count)
+        rowidx = idx % row_count
+        keyindex = tixel_pos_list.index([rowidx,colidx])
+        coord_x = int(round(tixel_positions[keyindex]['coordinates']['x']))
+        coord_y = int(round(tixel_positions[keyindex]['coordinates']['y']))
+        val = 0
+        if tixel_positions[keyindex]['value'] : val = 1
+        datarow = [b, val, rowidx, colidx, coord_y , coord_x ]
+        tissue_positions_list.append(datarow)    
+        csvwriter.writerow(datarow)
+    f1.close()
     self.update_state(state="PROGRESS", meta={"position": "Finishing" , "progress" : 80})
     ### concatenate tissue_positions_to gene expressions
     
