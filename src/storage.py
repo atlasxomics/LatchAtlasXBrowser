@@ -46,8 +46,9 @@ class StorageAPI:
             res=None
             resp=None
             param_filename=request.args.get('filename',type=str)
+            flag=request.args.get('flag')
             try:
-                data_bytesio,size,_= self.getFileObject(param_filename)
+                data_bytesio,size,_= self.getFileObject(param_filename, flag)
                 resp=Response(data_bytesio,status=200)
                 resp.headers['Content-Length']=size
                 resp.headers['Content-Type']='application/octet-stream'
@@ -66,7 +67,7 @@ class StorageAPI:
             resp=None
             param_filename=request.args.get('filename',type=str)
             rotation = request.args.get('rotation', type=int, default=0)
-            flag=request.args.get('flag', False)
+            flag=request.args.get('flag')
             try:
                 data_bytesio,size,_= self.getFileObjectAsJPG(flag, filename= param_filename, rotation=rotation)
                 resp=Response(data_bytesio,status=200)
@@ -87,7 +88,7 @@ class StorageAPI:
             res=None
             resp=None
             param_filename=request.args.get('filename',type=str)
-            flag=request.args.get('flag', False)
+            flag=request.args.get('flag')
             try:
                 data_bytesio,size,_= self.getImage(param_filename, flag)
                 resp=Response(data_bytesio,status=200)
@@ -111,7 +112,7 @@ class StorageAPI:
             x2 = request.args.get('x2', type=int)
             y1 = request.args.get('y1', type=int)
             y2 = request.args.get('y2', type=int)
-            flag=request.args.get('flag', False)
+            flag=request.args.get('flag')
             try:
                 data_bytesio,size = self.get_gray_image_rotation_cropping_jpg(flag, param_filename, param_rotation, x1 = x1, x2 = x2, y1 = y1, y2 = y2)
                 resp=Response(data_bytesio,status=200)
@@ -131,7 +132,7 @@ class StorageAPI:
             res=None
             resp=None
             param_filename=request.args.get('filename',type=str)
-            flag=request.args.get('flag', False)
+            flag=request.args.get('flag')
             try:
                 res = self.getJsonFromFile(param_filename, flag)
                 resp=Response(json.dumps(res),status=200)
@@ -150,7 +151,7 @@ class StorageAPI:
             res=None
             resp=None
             param_filename=request.args.get('filename',type=str)
-            flag=request.args.get('flag', False)
+            flag=request.args.get('flag')
             try:
                 res = self.getCsvFileAsJson(param_filename,flag)
                 resp=Response(json.dumps(res),status=200)
@@ -172,8 +173,8 @@ class StorageAPI:
             req = request.get_json()
             param_filename= req.get('path', "")
             param_filter=req.get('filter', None)
-            only_files = req.get('only_files', False)
-            flag=req.get('flag', False)
+            only_files = req.get('only_files')
+            flag=req.get('flag')
             try:
                 data= self.getFileList(flag, param_filename, param_filter, only_files)
                 resp=Response(json.dumps(data,default=utils.datetime_handler),status=200)
@@ -194,7 +195,7 @@ class StorageAPI:
             resp=None
             req = request.get_json()
             param_prefix=req.get('prefix', "")
-            flag=req.get('flag', False)
+            flag=req.get('flag')
             try:
                 data= self.get_subfolders(param_prefix, flag)
                 resp=Response(json.dumps(data,default=utils.datetime_handler),status=200)
@@ -212,7 +213,7 @@ class StorageAPI:
 ###### actual methods
 
     def getFileObject(self,filename,flag):
-      if flag: temp_outpath=self.ldataDirectory.joinpath(filename)
+      if flag == 'true': temp_outpath=self.ldataDirectory.joinpath(filename)
       else: temp_outpath=self.tempDirectory.joinpath(filename)
       print(temp_outpath)
       tf = self.checkFileExists(temp_outpath)
@@ -227,7 +228,7 @@ class StorageAPI:
 
     def rotate_file_object(self, relative_path, degree, flag):
         rel_path = Path(relative_path)
-        if flag: path = self.ldataDirectory.joinpath(rel_path)
+        if flag == 'true': path = self.ldataDirectory.joinpath(rel_path)
         else: path = self.tempDirectory.joinpath(rel_path)
         img = cv2.imread(path.__str__(), cv2.IMREAD_COLOR)
         img = self.rotate_image_no_cropping(img, degree)
@@ -255,7 +256,7 @@ class StorageAPI:
 
     def get_gray_image_rotation_cropping_jpg(self, flag, filename, rotation, x1, x2, y1, y2):
         rel_path = Path(filename)
-        if flag: path = self.ldataDirectory.joinpath(rel_path)
+        if flag == 'true': path = self.ldataDirectory.joinpath(rel_path)
         else: path = self.tempDirectory.joinpath(rel_path)
         img=cv2.imread(path.__str__(),cv2.IMREAD_COLOR)
         gray_img = img[:, :, 0]
@@ -268,7 +269,8 @@ class StorageAPI:
 
     def get_gray_image_rotation_jpg(self, filename, rotation, flag):
         rel_path = Path(filename)
-        if flag: path = self.ldataDirectory.joinpath(rel_path)
+        path = self.tempDirectory.joinpath(rel_path)
+        if flag == 'true': path = self.ldataDirectory.joinpath(rel_path)
         else: path = self.tempDirectory.joinpath(rel_path)
         img=cv2.imread(path.__str__(),cv2.IMREAD_COLOR)
         gray_img = img[:, :, 0]
@@ -366,16 +368,4 @@ class StorageAPI:
       except:
         return False
     
-
-
-
-
-
-
-
-
-
-
-
-
 
