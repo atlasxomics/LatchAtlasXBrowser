@@ -61,7 +61,7 @@ def generate_spatial(self, qcparams, **kwargs):
     barcode_path = qcparams['barcode_path']
     postB_flag = qcparams['postB_flag']
     latch_flag = qcparams['latch_flag']
-    postb_path = "{}{}/{}/".format(temp_dir,root_dir, run_id) if latch_flag else "{}/{}/".format(latch_dir,run_id)
+    postb_path = "{}{}/{}/".format(temp_dir,root_dir, run_id) if not latch_flag else "{}{}/".format(latch_dir,run_id)
     
     updating_existing = qcparams.get('updating_existing', False)
 
@@ -116,7 +116,8 @@ def generate_spatial(self, qcparams, **kwargs):
             if not latch_flag: os.rename("{}/{}/{}/{}".format(temp_dir,root_dir,run_id,name), str(figure_dir.joinpath(name)))
             else: os.rename("{}/{}/{}".format(latch_dir,run_id,name), str(figure_dir.joinpath(name)))
           elif "bsa" in i.lower():
-              bsa_original = Image.open(temp_dir + bsa_path)
+              if not latch_flag: bsa_original = Image.open(temp_dir + bsa_path)
+              else: bsa_original = Image.open(bsa_path)
               bsa_img_arr = np.array(bsa_original, np.uint8)
               if rotation != 0 :
                   bsa_img_arr = rotate_image_no_cropping(bsa_img_arr, rotation)

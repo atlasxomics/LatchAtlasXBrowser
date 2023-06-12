@@ -30,6 +30,7 @@ class StorageAPI:
         self.app=app
         CORS(self.app)
         self.tempDirectory=Path(self.app.config['TEMP_DIRECTORY'])
+        self.ldataDirectory=Path(self.app.config['LDATA_DIRECTORY'])
         self.initialize()
         self.initEndpoints()
     def initialize(self):
@@ -65,8 +66,9 @@ class StorageAPI:
             resp=None
             param_filename=request.args.get('filename',type=str)
             rotation = request.args.get('rotation', type=int, default=0)
+            flag=request.args.get('flag', False)
             try:
-                data_bytesio,size,_= self.getFileObjectAsJPG(filename= param_filename, rotation=rotation)
+                data_bytesio,size,_= self.getFileObjectAsJPG(flag, filename= param_filename, rotation=rotation)
                 resp=Response(data_bytesio,status=200)
                 resp.headers['Content-Length']=size
                 resp.headers['Content-Type']='application/octet-stream'
@@ -85,8 +87,9 @@ class StorageAPI:
             res=None
             resp=None
             param_filename=request.args.get('filename',type=str)
+            flag=request.args.get('flag', False)
             try:
-                data_bytesio,size,_= self.getImage(param_filename)
+                data_bytesio,size,_= self.getImage(param_filename, flag)
                 resp=Response(data_bytesio,status=200)
                 resp.headers['Content-Type']='application/octet-stream'
             except Exception as e:
@@ -108,8 +111,9 @@ class StorageAPI:
             x2 = request.args.get('x2', type=int)
             y1 = request.args.get('y1', type=int)
             y2 = request.args.get('y2', type=int)
+            flag=request.args.get('flag', False)
             try:
-                data_bytesio,size = self.get_gray_image_rotation_cropping_jpg(param_filename, param_rotation, x1 = x1, x2 = x2, y1 = y1, y2 = y2)
+                data_bytesio,size = self.get_gray_image_rotation_cropping_jpg(flag, param_filename, param_rotation, x1 = x1, x2 = x2, y1 = y1, y2 = y2)
                 resp=Response(data_bytesio,status=200)
                 resp.headers['Content-Length']=size
                 resp.headers['Content-Type']='application/octet-stream'
@@ -127,8 +131,9 @@ class StorageAPI:
             res=None
             resp=None
             param_filename=request.args.get('filename',type=str)
+            flag=request.args.get('flag', False)
             try:
-                res = self.getJsonFromFile(param_filename)
+                res = self.getJsonFromFile(param_filename, flag)
                 resp=Response(json.dumps(res),status=200)
                 resp.headers['Content-Type']='application/json'
             except Exception as e:
@@ -145,8 +150,9 @@ class StorageAPI:
             res=None
             resp=None
             param_filename=request.args.get('filename',type=str)
+            flag=request.args.get('flag', False)
             try:
-                res = self.getCsvFileAsJson(param_filename)
+                res = self.getCsvFileAsJson(param_filename,flag)
                 resp=Response(json.dumps(res),status=200)
                 resp.headers['Content-Type']='application/json'
             except Exception as e:
@@ -167,8 +173,9 @@ class StorageAPI:
             param_filename= req.get('path', "")
             param_filter=req.get('filter', None)
             only_files = req.get('only_files', False)
+            flag=req.get('flag', False)
             try:
-                data= self.getFileList(param_filename, param_filter, only_files)
+                data= self.getFileList(flag, param_filename, param_filter, only_files)
                 resp=Response(json.dumps(data,default=utils.datetime_handler),status=200)
                 resp.headers['Content-Type']='application/json'
             except Exception as e:
@@ -187,8 +194,9 @@ class StorageAPI:
             resp=None
             req = request.get_json()
             param_prefix=req.get('prefix', "")
+            flag=req.get('flag', False)
             try:
-                data= self.get_subfolders(param_prefix)
+                data= self.get_subfolders(param_prefix, flag)
                 resp=Response(json.dumps(data,default=utils.datetime_handler),status=200)
                 resp.headers['Content-Type']='application/json'
             except Exception as e:
@@ -199,49 +207,13 @@ class StorageAPI:
                 resp.headers['Content-Type']='application/json'
             finally:
                 return resp   
-
-        @self.app.route('/api/v1/storage/check_spatial_folder_exists', methods=['GET'])
-        def _check_spatial_folder_exists():
-            sc=200
-            res=None
-            resp=None
-            param_folder=request.args.get('folder',type=str)
-            param_root = request.args.get('root', type=str)
-            try:
-                res = self.check_spatial_folder_exists(param_folder, param_root)
-                resp=Response(json.dumps(res),status=200)
-                resp.headers['Content-Type']='application/json'
-            except Exception as e:
-                exc=traceback.format_exc()
-                res=utils.error_message("Exception : {} {}".format(str(e),exc),500)
-                resp=Response(json.dumps(res),status=res['status_code'])
-                resp.headers['Content-Type']='application/json'
-            finally:
-                return resp
-  
-  
-        @self.app.route('/api/v1/storage/qc_entry',methods=['DELETE'])
-        def _delete_qc():
-            sc=200
-            res=None
-            param_root=request.args.get('qc_dir',type=str)
-            try:
-                res= self.deleteQCEntry(param_root)
-            except Exception as e:
-                exc=traceback.format_exc()
-                res=utils.error_message("{} {}".format(str(e),exc),500)
-                sc=res['status_code']
-                self.app.logger.exception("{} {}".format(str(e),exc))
-            finally:
-                resp=Response(json.dumps(res),status=sc)
-                resp.headers['Content-Type']='application/json'
-                self.app.logger.info(utils.log(str(sc)))
-                return resp     
+     
             
 ###### actual methods
 
-    def getFileObject(self,filename):
-      temp_outpath=self.tempDirectory.joinpath(filename)
+    def getFileObject(self,filename,flag):
+      if flag: temp_outpath=self.ldataDirectory.joinpath(filename)
+      else: temp_outpath=self.tempDirectory.joinpath(filename)
       print(temp_outpath)
       tf = self.checkFileExists(temp_outpath)
       if not tf :
@@ -253,9 +225,10 @@ class StorageAPI:
         f.close()
       return bytesIO, size , temp_outpath
 
-    def rotate_file_object(self, relative_path, degree):
+    def rotate_file_object(self, relative_path, degree, flag):
         rel_path = Path(relative_path)
-        path = self.tempDirectory.joinpath(rel_path)
+        if flag: path = self.ldataDirectory.joinpath(rel_path)
+        else: path = self.tempDirectory.joinpath(rel_path)
         img = cv2.imread(path.__str__(), cv2.IMREAD_COLOR)
         img = self.rotate_image_no_cropping(img, degree)
         bytesIO = self.get_img_bytes(img)
@@ -268,8 +241,8 @@ class StorageAPI:
         bytesIO = io.BytesIO(bytes)
         return bytesIO
 
-    def getFileObjectAsJPG(self,filename, rotation):
-        _,_,name = self.getFileObject(filename)
+    def getFileObjectAsJPG(self,flag, filename, rotation):
+        _,_,name = self.getFileObject(filename, flag)
         img=cv2.imread(name.__str__(),cv2.IMREAD_COLOR)
         if rotation != 0:
             img = self.rotate_image_no_cropping(img=img, degree=rotation)
@@ -280,9 +253,10 @@ class StorageAPI:
     def crop_image(self,img, x1, x2, y1, y2):
         return img[y1: y2, x1: x2]
 
-    def get_gray_image_rotation_cropping_jpg(self, filename, rotation, x1, x2, y1, y2):
+    def get_gray_image_rotation_cropping_jpg(self, flag, filename, rotation, x1, x2, y1, y2):
         rel_path = Path(filename)
-        path = self.tempDirectory.joinpath(rel_path)
+        if flag: path = self.ldataDirectory.joinpath(rel_path)
+        else: path = self.tempDirectory.joinpath(rel_path)
         img=cv2.imread(path.__str__(),cv2.IMREAD_COLOR)
         gray_img = img[:, :, 0]
         if rotation != 0:
@@ -292,9 +266,10 @@ class StorageAPI:
         size = bytesIO.getbuffer().nbytes
         return bytesIO, size
 
-    def get_gray_image_rotation_jpg(self, filename, rotation):
+    def get_gray_image_rotation_jpg(self, filename, rotation, flag):
         rel_path = Path(filename)
-        path = self.tempDirectory.joinpath(rel_path)
+        if flag: path = self.ldataDirectory.joinpath(rel_path)
+        else: path = self.tempDirectory.joinpath(rel_path)
         img=cv2.imread(path.__str__(),cv2.IMREAD_COLOR)
         gray_img = img[:, :, 0]
         if rotation != 0:
@@ -317,8 +292,8 @@ class StorageAPI:
         rotated = cv2.warpAffine(img, M, (bound_w, bound_h))
         return rotated
 
-    def getImage(self,filename):
-        _,_,name = self.getFileObject(filename)
+    def getImage(self,filename, flag):
+        _,_,name = self.getFileObject(filename, flag)
         f=open(name,'rb+')
         bytesIO=io.BytesIO(f.read())
         size=os.fstat(f.fileno()).st_size
@@ -327,13 +302,13 @@ class StorageAPI:
 
 
 
-    def getJsonFromFile(self,filename):
-      _,_,name=self.getFileObject(filename)
+    def getJsonFromFile(self,filename,flag):
+      _,_,name=self.getFileObject(filename, flag)
       out = json.load(open(name,'rb'))
       return out
 
-    def getCsvFileAsJson(self,filename):
-        _,_,name=self.getFileObject(filename)
+    def getCsvFileAsJson(self,filename,flag):
+        _,_,name=self.getFileObject(filename,flag)
         if '.gz' not in filename:
           out = []
           with open(name,'r') as cf:
@@ -348,8 +323,9 @@ class StorageAPI:
               out.append(r)
         return out
 
-    def get_subfolders(self, prefix):
-      root_dir = self.tempDirectory.joinpath(prefix)
+    def get_subfolders(self, prefix, flag):
+      if flag: root_dir = self.ldataDirectory.joinpath(prefix)
+      else: root_dir = self.tempDirectory.joinpath(prefix)
       res = []
       for path in glob.glob(f'{root_dir}/*/'):
         ind = [x for x, v in enumerate(path) if v == '/']
@@ -357,7 +333,7 @@ class StorageAPI:
 
       return res
 
-    def getFileList(self,root_path, fltr=None, only_files = False): #get all pages
+    def getFileList(self,flag, root_path, fltr=None, only_files = False): #get all pages
       #alter this to be a lambda function that filters based on the filters and also whether the object is a file or a folder
       def checkList(value, list):
         #can exclude an option if it is only looking for files and finds a folder
@@ -373,7 +349,8 @@ class StorageAPI:
         # if it doesn't have a filter and passed the only files condition, then it is valid
         return value.name
       
-      root_dir = self.tempDirectory.joinpath(root_path)
+      if flag: root_dir = self.ldataDirectory.joinpath(root_path)
+      else: root_dir = self.tempDirectory.joinpath(root_path)
       res=[]
       for path in os.scandir(root_dir):
         temp = path.name
