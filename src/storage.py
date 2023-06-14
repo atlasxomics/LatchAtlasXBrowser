@@ -183,7 +183,7 @@ class StorageAPI:
                 exc=traceback.format_exc()
                 res=utils.error_message("Exception : {} {}".format(str(e),exc),500)
                 print(res)
-                resp=Response(json.dumps(res),status=res['status_code'])
+                resp=Response(json.dumps([]),status=res['status_code'])
                 resp.headers['Content-Type']='application/json'
             finally:
                 return resp   
@@ -204,7 +204,7 @@ class StorageAPI:
                 exc=traceback.format_exc()
                 res=utils.error_message("Exception : {} {}".format(str(e),exc),500)
                 print(res)
-                resp=Response(json.dumps(res),status=res['status_code'])
+                resp=Response(json.dumps([]),status=res['status_code'])
                 resp.headers['Content-Type']='application/json'
             finally:
                 return resp   

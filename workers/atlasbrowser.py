@@ -96,8 +96,12 @@ def generate_spatial(self, qcparams, **kwargs):
 
     self.update_state(state="PROGRESS", meta={"position": "running" , "progress" : 20})
     barcodes = None
-    with open(temp_dir + barcode_path,'r') as f:
-        barcodes = f.read().splitlines()
+    if not latch_flag:
+        with open(temp_dir + barcode_path,'r') as f:
+            barcodes = f.read().splitlines()
+    else:
+        with open(latch_dir + barcode_path,'r') as f:
+            barcodes = f.read().splitlines()
     ### save metadata & scalefactors
     local_metadata_filename = local_spatial_dir.joinpath('metadata.json')
     La_local_metadata_filename = La_local_spatial_dir.joinpath('metadata.json')
