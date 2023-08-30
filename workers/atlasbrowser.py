@@ -159,13 +159,13 @@ def generate_spatial(self, qcparams, **kwargs):
         if width > height:
             factorHigh = 2000/width
             factorLow = 600/width
-            high_res = cropped_postB.resize((2000, int(height * factorHigh)), Image.ANTIALIAS)
-            low_res = cropped_postB.resize((600, int(height * factorLow)), Image.ANTIALIAS)
+            high_res = cropped_postB.resize((2000, int(height * factorHigh)), Image.LANCZOS)
+            low_res = cropped_postB.resize((600, int(height * factorLow)), Image.LANCZOS)
         else:
             factorHigh = 2000/height
             factorLow = 600/height
-            high_res = cropped_postB.resize((int(width*factorHigh), 2000), Image.ANTIALIAS)
-            low_res = cropped_postB.resize((int(width*factorLow), 600), Image.ANTIALIAS)
+            high_res = cropped_postB.resize((int(width*factorHigh), 2000), Image.LANCZOS)
+            low_res = cropped_postB.resize((int(width*factorLow), 600), Image.LANCZOS)
 
         local_hires_image_path = local_spatial_dir.joinpath('tissue_hires_image.png')
         local_lowres_image_path = local_spatial_dir.joinpath('tissue_lowres_image.png')
