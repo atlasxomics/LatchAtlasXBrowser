@@ -69,8 +69,6 @@ def generate_spatial(self, qcparams, **kwargs):
     
     metadata["replaced_24_barcodes"] = next_gen_barcodes
 
-
-
     ### source image path
     allFiles = [i for i in oldFiles if '.json' not in i and 'spatial' not in i]
     ### output directories (S3)
@@ -84,12 +82,18 @@ def generate_spatial(self, qcparams, **kwargs):
     local_spatial_dir = Path(temp_dir).joinpath(spatial_dir)
     La_local_spatial_dir = Path(latch_dir).joinpath(La_spatial_dir)
     if not local_spatial_dir.exists(): local_spatial_dir.mkdir(parents=True, exist_ok=True)
-    if not La_local_spatial_dir.exists(): La_local_spatial_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        if not La_local_spatial_dir.exists(): La_local_spatial_dir.mkdir(parents=True, exist_ok=True)
+    except:
+        pass
     
     local_figure_dir = Path(temp_dir).joinpath(figure_dir)
     La_local_figure_dir = Path(latch_dir).joinpath(La_figure_dir)
     if not local_figure_dir.exists(): local_figure_dir.mkdir(parents=True, exist_ok=True)
-    if not La_local_figure_dir.exists(): La_local_figure_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        if not La_local_figure_dir.exists(): La_local_figure_dir.mkdir(parents=True, exist_ok=True)
+    except:
+        pass
 
     ### read barcodes information 
     row_count = 50
@@ -100,15 +104,22 @@ def generate_spatial(self, qcparams, **kwargs):
         with open(temp_dir + barcode_path,'r') as f:
             barcodes = f.read().splitlines()
     else:
-        with open(latch_dir + barcode_path,'r') as f:
-            barcodes = f.read().splitlines()
+        try:
+            with open(latch_dir + barcode_path,'r') as f:
+                barcodes = f.read().splitlines()
+        except:
+            pass
     ### save metadata & scalefactors
     local_metadata_filename = local_spatial_dir.joinpath('metadata.json')
     La_local_metadata_filename = La_local_spatial_dir.joinpath('metadata.json')
     local_scalefactors_filename = local_spatial_dir.joinpath('scalefactors_json.json')
     La_local_scalefactors_filename = La_local_spatial_dir.joinpath('scalefactors_json.json')
     json.dump(metadata, open(local_metadata_filename,'w'), indent=4,sort_keys=True)
-    json.dump(metadata, open(La_local_metadata_filename,'w'), indent=4,sort_keys=True)
+    try:
+        json.dump(metadata, open(La_local_metadata_filename,'w'), indent=4,sort_keys=True)
+    except:
+        pass
+        
     # adding metadata and scalefactors to the list to be uploaded to S3 Bucket
     
     if not updating_existing:
@@ -118,7 +129,11 @@ def generate_spatial(self, qcparams, **kwargs):
           name = vals[len(vals) - 1]
           if "flow" in i.lower() or "fix" in i.lower():
             if not latch_flag: os.rename("{}/{}/{}/{}".format(temp_dir,root_dir,run_id,name), str(figure_dir.joinpath(name)))
-            else: os.rename("{}/{}/{}".format(latch_dir,run_id,name), str(figure_dir.joinpath(name)))
+            else:
+                try:
+                    os.rename("{}/{}/{}".format(latch_dir,run_id,name), str(figure_dir.joinpath(name)))
+                except:
+                    pass
           elif "bsa" in i.lower():
               if not latch_flag: bsa_original = Image.open(temp_dir + bsa_path)
               else: bsa_original = Image.open(bsa_path)
@@ -150,8 +165,14 @@ def generate_spatial(self, qcparams, **kwargs):
         La_tempName_postB = La_local_figure_dir.joinpath("postB.tif")
         cropped_bsa.save(tempName_bsa.__str__())
         cropped_postB.save(tempName_postB.__str__())
-        cropped_bsa.save(La_tempName_bsa.__str__())
-        cropped_postB.save(La_tempName_postB.__str__())
+        try:
+            cropped_bsa.save(La_tempName_bsa.__str__())
+        except:
+            pass
+        try:
+            cropped_postB.save(La_tempName_postB.__str__())
+        except:
+            pass
 
         height = cropped_postB.height
         width = cropped_postB.width
@@ -173,13 +194,23 @@ def generate_spatial(self, qcparams, **kwargs):
         La_local_lowres_image_path = La_local_spatial_dir.joinpath('tissue_lowres_image.png')
         high_res.save(local_hires_image_path.__str__())
         low_res.save(local_lowres_image_path.__str__())
-        high_res.save(La_local_hires_image_path.__str__())
-        low_res.save(La_local_lowres_image_path.__str__())
+        try:
+            high_res.save(La_local_hires_image_path.__str__())   
+        except:
+            pass
+        try:
+          low_res.save(La_local_lowres_image_path.__str__())  
+        except:
+            pass
+        
         scalefactors["tissue_hires_scalef"] = factorHigh
         scalefactors["tissue_lowres_scalef"] = factorLow
     
         json.dump(scalefactors, open(local_scalefactors_filename,'w'), indent=4,sort_keys=True)
-        json.dump(scalefactors, open(La_local_scalefactors_filename,'w'), indent=4,sort_keys=True)
+        try:
+          json.dump(scalefactors, open(La_local_scalefactors_filename,'w'), indent=4,sort_keys=True)  
+        except:
+            pass
         
     self.update_state(state="PROGRESS", meta={"position": "running" , "progress" : 75})
     ### generate tissue_positions_list.csv
@@ -201,7 +232,11 @@ def generate_spatial(self, qcparams, **kwargs):
         tissue_positions_list.append(datarow)    
         csvwriter.writerow(datarow)
     f.close()
-    f1=open(La_local_tissue_positions_filename, 'w')
+    try:
+      f1=open(La_local_tissue_positions_filename, 'w')
+    except:
+        pass
+    
     csvwriter = csv.writer(f1, delimiter=',',escapechar=' ',quoting=csv.QUOTE_NONE)
     for idx, b in enumerate(barcodes):
         colidx = int(idx/row_count)
