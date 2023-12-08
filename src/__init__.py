@@ -8,6 +8,7 @@ import argparse
 from flask import Flask
 
 ## App related
+from src.auth import Auth 
 from src.storage import StorageAPI
 from src.tasks import TaskAPI
 from flask import render_template
@@ -49,5 +50,10 @@ app.logger.debug("Application is launched")
 
 app.config['APP_VERSION']=version
 app.config['SUBMODULES']={}
-app.config['SUBMODULES']['StorageAPI']=StorageAPI(app)
-app.config['SUBMODULES']['TaskAPI']=TaskAPI(app)
+app.config['SUBMODULES']['Auth']=Auth(app)
+
+app.config['SUBMODULES']['StorageAPI']=StorageAPI(  auth=app.config['SUBMODULES']['Auth'],
+                                                    datastore=app.config['SUBMODULES']['RelationalDatabaseAPI'])
+                                                    
+app.config['SUBMODULES']['TaskAPI']=TaskAPI(  auth=app.config['SUBMODULES']['Auth'],
+                                                    datastore=app.config['SUBMODULES']['Database'])

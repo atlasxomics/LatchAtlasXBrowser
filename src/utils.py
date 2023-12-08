@@ -11,6 +11,7 @@
 
 import json
 from flask import request 
+from flask_jwt_extended import current_user
 
 import hmac
 import hashlib
@@ -111,6 +112,17 @@ def get_user_ip():
     headers_list = request.headers.getlist("X-Forwarded-For")
     user_ip = headers_list[0] if headers_list else request.remote_addr
     return user_ip
+
+def log(msg=""):
+    username="anonymous"
+    try:
+        u,g=current_user    
+        username=u.username 
+    except Exception as e:
+        pass
+
+    s="[{} {}] <{}@{}> MSG: {} ".format(request.method,request.path,username,get_user_ip(),msg)
+    return s
 
 ## dict to attributes
 

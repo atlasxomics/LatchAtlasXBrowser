@@ -1,6 +1,7 @@
 
 import os
 import yaml,json,csv
+import PIL
 from PIL import Image
 from pathlib import Path
 import json
@@ -8,10 +9,12 @@ from pathlib import Path
 Image.MAX_IMAGE_PIXELS = None
 from celery import Celery
 from celery.signals import worker_process_init
+import shutil
 
 import numpy as np 
 import utils
 import cv2
+import math
 
 app=Celery('atlasbrowser_task',broker='amqp://'+os.environ['RABBITMQ_HOST'],backend='redis://'+os.environ['REDIS_HOST'])
 
@@ -43,11 +46,17 @@ def generate_spatial(self, qcparams, **kwargs):
     self.update_state(state="STARTED")
     self.update_state(state="PROGRESS", meta={"position": "preparation" , "progress" : 0})
     config=utils.load_configuration()
-    ## config
-    temp_dir = config['TEMP_DIRECTORY']
-    latch_dir = '/ldata/'
-    ## parameter parsing
-    root_dir = qcparams['root_dir']
+    
+    ############################################
+    # Pull parameters from qcparams file
+    
+    temp_dir = config['TEMP_DIRECTORY'] 
+    upload_list=[]
+    root_dir_spatial = qcparams['root_dir_spatial']
+    root_dir_bsa = qcparams["root_dir_bsa"]
+    bucket_name_spatial = qcparams.get("bucket_name_spatial")
+    bucket_name_bsa = qcparams.get("bucket_name_bsa")
+    
     metadata = qcparams['metadata']
     oldFiles = qcparams['files']
     scalefactors = qcparams['scalefactors']
@@ -55,102 +64,74 @@ def generate_spatial(self, qcparams, **kwargs):
     tixel_positions = qcparams['mask']
     crop_coordinates = qcparams['crop_area']
     orientation = qcparams['orientation']
+    barcodes = qcparams.get('barcodes', 2)
     rotation = (int(orientation['rotation']) % 360)
-    bsa_path = qcparams['bsa_path']
-    barcode_root_dir = qcparams['barcode_dir']
-    barcode_path = qcparams['barcode_path']
-    postB_flag = qcparams['postB_flag']
-    latch_flag = qcparams['latch_flag']
-    postb_path = "{}{}/{}/".format(temp_dir,root_dir, run_id) if not latch_flag else "{}{}/".format(latch_dir,run_id)
-    
+    bsa_filename = qcparams['bsa_filename']
+    barcodes = qcparams["barcode_list"]
     updating_existing = qcparams.get('updating_existing', False)
-
-    next_gen_barcodes = True
     
-    metadata["replaced_24_barcodes"] = next_gen_barcodes
+    
+    config["S3_BUCKET_NAME"] =  bucket_name_spatial
+    aws_s3_spatial = utils.AWS_S3(config)
+    
+    config_bsa = config.copy()
+    config_bsa["S3_BUCKET_NAME"] = bucket_name_bsa
 
-    ### source image path
-    allFiles = [i for i in oldFiles if '.json' not in i and 'spatial' not in i]
+    temp_path = Path(temp_dir).joinpath(root_dir_spatial, run_id)
+
+    # Filtering the images that are in the current bsa directory to ensure they don't include contents of spatial folder
+    allFiles = [i for i in oldFiles if ('.json' not in i and 'spatial' not in i)]
+    
     ### output directories (S3)
-    ##Images
-    spatial_dir = Path(root_dir).joinpath(run_id, 'spatial')
-    figure_dir = Path(root_dir).joinpath(run_id, 'spatial', 'figure')
-    La_spatial_dir = Path(latch_dir).joinpath(run_id, 'spatial')
-    La_figure_dir = Path(latch_dir).joinpath(run_id, 'spatial', 'figure')
-    ### local temp directories
-    ##/root/Images
-    local_spatial_dir = Path(temp_dir).joinpath(spatial_dir)
-    La_local_spatial_dir = Path(latch_dir).joinpath(La_spatial_dir)
-    if not local_spatial_dir.exists(): local_spatial_dir.mkdir(parents=True, exist_ok=True)
-    try:
-        if not La_local_spatial_dir.exists(): La_local_spatial_dir.mkdir(parents=True, exist_ok=True)
-    except:
-        pass
+    spatial_dir = Path(root_dir_spatial).joinpath(run_id, 'spatial')
+    figure_dir = Path(root_dir_spatial).joinpath(run_id, 'spatial', 'figure')
+    metadata_filename = spatial_dir.joinpath('metadata.json')
+    scalefactors_filename = spatial_dir.joinpath('scalefactors_json.json')
+    tissue_hires_image_filename = spatial_dir.joinpath('tissue_hires_image.png')
+    tissue_lowres_image_filename = spatial_dir.joinpath('tissue_lowres_image.png')
+    tissue_positions_filename = spatial_dir.joinpath('tissue_positions_list.csv')
     
+    
+    ### local temp directories
+    local_spatial_dir = Path(temp_dir).joinpath(spatial_dir)
     local_figure_dir = Path(temp_dir).joinpath(figure_dir)
-    La_local_figure_dir = Path(latch_dir).joinpath(La_figure_dir)
-    if not local_figure_dir.exists(): local_figure_dir.mkdir(parents=True, exist_ok=True)
-    try:
-        if not La_local_figure_dir.exists(): La_local_figure_dir.mkdir(parents=True, exist_ok=True)
-    except:
-        pass
+    # parents = True specifies that if not already existsing those parent directories are made.
+    # exist_ok indicates to not re-make the folders if they already exist
+    local_spatial_dir.mkdir(parents=True, exist_ok=True)
+    local_figure_dir.mkdir(parents=True, exist_ok=True)
 
+    
     ### read barcodes information 
-    row_count = 50
-
+    row_count = math.sqrt(len(barcodes))
+    
     self.update_state(state="PROGRESS", meta={"position": "running" , "progress" : 20})
-    barcodes = None
-    if not latch_flag:
-        with open(temp_dir + barcode_path,'r') as f:
-            barcodes = f.read().splitlines()
-    else:
-        try:
-            with open(latch_dir + barcode_path,'r') as f:
-                barcodes = f.read().splitlines()
-        except:
-            pass
     ### save metadata & scalefactors
     local_metadata_filename = local_spatial_dir.joinpath('metadata.json')
-    La_local_metadata_filename = La_local_spatial_dir.joinpath('metadata.json')
     local_scalefactors_filename = local_spatial_dir.joinpath('scalefactors_json.json')
-    La_local_scalefactors_filename = La_local_spatial_dir.joinpath('scalefactors_json.json')
     json.dump(metadata, open(local_metadata_filename,'w'), indent=4,sort_keys=True)
-    try:
-        json.dump(metadata, open(La_local_metadata_filename,'w'), indent=4,sort_keys=True)
-    except:
-        pass
-        
+    upload_list.append([local_metadata_filename,metadata_filename])
     # adding metadata and scalefactors to the list to be uploaded to S3 Bucket
-    
     if not updating_existing:
+        upload_list.append([local_scalefactors_filename,scalefactors_filename])
     ### load image from s3
         for i in allFiles:
-          vals = i.split("/")
-          name = vals[len(vals) - 1]
-          if "flow" in i.lower() or "fix" in i.lower():
-            if not latch_flag: os.rename("{}/{}/{}/{}".format(temp_dir,root_dir,run_id,name), str(figure_dir.joinpath(name)))
-            else:
-                try:
-                    os.rename("{}/{}/{}".format(latch_dir,run_id,name), str(figure_dir.joinpath(name)))
-                except:
-                    pass
-          elif "bsa" in i.lower():
-              if not latch_flag: bsa_original = Image.open(temp_dir + bsa_path)
-              else: bsa_original = Image.open(bsa_path)
-              bsa_img_arr = np.array(bsa_original, np.uint8)
-              if rotation != 0 :
-                  bsa_img_arr = rotate_image_no_cropping(bsa_img_arr, rotation)
-              if not postB_flag:
+            vals = i.split("/")
+            name = vals[len(vals) - 1]
+            
+            if bsa_filename == i:
+                bsa_path = Path(temp_dir).joinpath(i)
+                bsa_original = Image.open(str(bsa_path))
+                bsa_img_arr = np.array(bsa_original, np.uint8)
+                if rotation != 0 :
+                    bsa_img_arr = rotate_image_no_cropping(bsa_img_arr, rotation)
+                
                 postB_img_arr = bsa_img_arr[:, :, 2]
                 postB_source = Image.fromarray(postB_img_arr)
-              bsa_source = Image.fromarray(bsa_img_arr)
-          elif "postb" in i.lower():
-              postB_original = Image.open(postb_path+name)
-              postB_img_arr = np.array(postB_original, np.uint8)
-              if rotation != 0 :
-                postB_img_arr = rotate_image_no_cropping(postB_img_arr, rotation)
-              postB_source = Image.fromarray(postB_img_arr)
-              
+                bsa_source = Image.fromarray(bsa_img_arr)
+                
+            elif "flow" in i.lower() or "fix" in i.lower():
+                path = str(figure_dir.joinpath(name))
+                aws_s3_spatial.moveFile(bucket_name_bsa,bucket_name_spatial, i, path)
 
         self.update_state(state="PROGRESS", meta={"position": "running" , "progress" : 45})
 
@@ -161,18 +142,13 @@ def generate_spatial(self, qcparams, **kwargs):
         ## high resolution
         tempName_bsa = local_figure_dir.joinpath("postB_BSA.tif")
         tempName_postB = local_figure_dir.joinpath("postB.tif")
-        La_tempName_bsa = La_local_figure_dir.joinpath("postB_BSA.tif")
-        La_tempName_postB = La_local_figure_dir.joinpath("postB.tif")
+        s3Name_bsa = figure_dir.joinpath("postB_BSA.tif")
+        s3Name_postB = figure_dir.joinpath("postB.tif")
         cropped_bsa.save(tempName_bsa.__str__())
         cropped_postB.save(tempName_postB.__str__())
-        try:
-            cropped_bsa.save(La_tempName_bsa.__str__())
-        except:
-            pass
-        try:
-            cropped_postB.save(La_tempName_postB.__str__())
-        except:
-            pass
+        # adding figure folder images to upload list
+        upload_list.append([tempName_postB, s3Name_postB])
+        upload_list.append([tempName_bsa, s3Name_bsa])
 
         height = cropped_postB.height
         width = cropped_postB.width
@@ -180,49 +156,35 @@ def generate_spatial(self, qcparams, **kwargs):
         if width > height:
             factorHigh = 2000/width
             factorLow = 600/width
-            high_res = cropped_postB.resize((2000, int(height * factorHigh)), Image.LANCZOS)
-            low_res = cropped_postB.resize((600, int(height * factorLow)), Image.LANCZOS)
+            high_res = cropped_postB.resize((2000, int(height * factorHigh)), Image.ANTIALIAS)
+            low_res = cropped_postB.resize((600, int(height * factorLow)), Image.ANTIALIAS)
         else:
             factorHigh = 2000/height
             factorLow = 600/height
-            high_res = cropped_postB.resize((int(width*factorHigh), 2000), Image.LANCZOS)
-            low_res = cropped_postB.resize((int(width*factorLow), 600), Image.LANCZOS)
+            high_res = cropped_postB.resize((int(width*factorHigh), 2000), Image.ANTIALIAS)
+            low_res = cropped_postB.resize((int(width*factorLow), 600), Image.ANTIALIAS)
 
         local_hires_image_path = local_spatial_dir.joinpath('tissue_hires_image.png')
         local_lowres_image_path = local_spatial_dir.joinpath('tissue_lowres_image.png')
-        La_local_hires_image_path = La_local_spatial_dir.joinpath('tissue_hires_image.png')
-        La_local_lowres_image_path = La_local_spatial_dir.joinpath('tissue_lowres_image.png')
         high_res.save(local_hires_image_path.__str__())
         low_res.save(local_lowres_image_path.__str__())
-        try:
-            high_res.save(La_local_hires_image_path.__str__())   
-        except:
-            pass
-        try:
-          low_res.save(La_local_lowres_image_path.__str__())  
-        except:
-            pass
-        
         scalefactors["tissue_hires_scalef"] = factorHigh
         scalefactors["tissue_lowres_scalef"] = factorLow
     
         json.dump(scalefactors, open(local_scalefactors_filename,'w'), indent=4,sort_keys=True)
-        try:
-          json.dump(scalefactors, open(La_local_scalefactors_filename,'w'), indent=4,sort_keys=True)  
-        except:
-            pass
+        upload_list.append([local_hires_image_path, tissue_hires_image_filename])
+        upload_list.append([local_lowres_image_path, tissue_lowres_image_filename])
         
     self.update_state(state="PROGRESS", meta={"position": "running" , "progress" : 75})
     ### generate tissue_positions_list.csv
     local_tissue_positions_filename= local_spatial_dir.joinpath('tissue_positions_list.csv')
-    La_local_tissue_positions_filename= local_spatial_dir.joinpath('tissue_positions_list.csv')
     tissue_positions_list = []
     tixel_pos_list= [x['position'] for x  in tixel_positions]
     f=open(local_tissue_positions_filename, 'w')
     csvwriter = csv.writer(f, delimiter=',',escapechar=' ',quoting=csv.QUOTE_NONE)
     for idx, b in enumerate(barcodes):
         colidx = int(idx/row_count)
-        rowidx = idx % row_count
+        rowidx = int(idx % row_count)
         keyindex = tixel_pos_list.index([rowidx,colidx])
         coord_x = int(round(tixel_positions[keyindex]['coordinates']['x']))
         coord_y = int(round(tixel_positions[keyindex]['coordinates']['y']))
@@ -232,27 +194,21 @@ def generate_spatial(self, qcparams, **kwargs):
         tissue_positions_list.append(datarow)    
         csvwriter.writerow(datarow)
     f.close()
-    try:
-      f1=open(La_local_tissue_positions_filename, 'w')
-    except:
-        pass
-    
-    csvwriter = csv.writer(f1, delimiter=',',escapechar=' ',quoting=csv.QUOTE_NONE)
-    for idx, b in enumerate(barcodes):
-        colidx = int(idx/row_count)
-        rowidx = idx % row_count
-        keyindex = tixel_pos_list.index([rowidx,colidx])
-        coord_x = int(round(tixel_positions[keyindex]['coordinates']['x']))
-        coord_y = int(round(tixel_positions[keyindex]['coordinates']['y']))
-        val = 0
-        if tixel_positions[keyindex]['value'] : val = 1
-        datarow = [b, val, rowidx, colidx, coord_y , coord_x ]
-        tissue_positions_list.append(datarow)    
-        csvwriter.writerow(datarow)
-    f1.close()
     self.update_state(state="PROGRESS", meta={"position": "Finishing" , "progress" : 80})
-    ### concatenate tissue_positions_to gene expressions
+    upload_list.append([local_tissue_positions_filename, tissue_positions_filename])
     
-
+    #Generating compressed spatial folder
+    compressed_name = Path(temp_path).joinpath(f"{run_id}_compressed_spatial") #Create path to new file name, in the root/run_id dir
+    compressed_output_key_spatial = Path(root_dir_spatial).joinpath(run_id, f"{run_id}_compressed_spatial.zip") #Creating the path to the uploaded to aws, including .zip extension
+    shutil.make_archive( base_name=compressed_name, format='zip', root_dir = local_spatial_dir) #creating the zipped file
+    upload_path_zipped_spatial = Path(str(compressed_name) + ".zip") #Added the .zip extension back to the path for aws upload
+    upload_list.append([upload_path_zipped_spatial, compressed_output_key_spatial])
+    
+    for local_filename, output_key in upload_list:
+        aws_s3_spatial.uploadFile(str(local_filename), str(output_key))
+    
     self.update_state(state="PROGRESS", meta={"position": "Finished" , "progress" : 100})
-    return 'Finished'
+    out=[list(map(str, x)) for x in upload_list]
+    #print(len(out))
+    return out
+

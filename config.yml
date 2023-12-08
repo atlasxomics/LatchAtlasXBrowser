@@ -1,9 +1,46 @@
 #App
-## temporary directory to store files
-TEMP_DIRECTORY: /root/
-LDATA_DIRECTORY: /ldata/
-LOG_DIRECTORY: /root/
 
+LOG_DIRECTORY: /home/ubuntu/app_data/logs
+## temporary directory to store files
+TEMP_DIRECTORY: /Images
+DBPOPULATION_DIRECTORY: /data/dbpopulation
+API_DIRECTORY: /home/ubuntu/apiData
+WEBPAGE_DIRECTORY: /home/ubuntu/atx-spa-dist/dist
+LDATA_DIRECTORY: /Images
+#Flask
+MAX_CONTENT_SIZE: 10000000000
+
+#JWT
+JWT_TOKEN_LOCATION: 
+  - headers
+  - query_string
+
+JWT_HEADER_TYPE: JWT
+JWT_COOKIE_SECURE: True
+JWT_COOKIE_CSRF_PROTECT: False
+JWT_SECRET_KEY: wosqwiepuqwrepvb3p9v297923972379239
+JWT_IDENTITY_CLAIM: sub
+
+JWT_VERIFY_EXPIRATION: True
+JWT_ACCESS_TOKEN_EXPIRES : 360000
+JWT_REFRESH_TOKEN_EXPIRES : 10000
+
+
+#AWS
+## default 
+AWS_ACCESS_KEY_ID: AKIAWTQNXJCYBRXS7SHQ
+AWS_SECRET_ACCESS_KEY: 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
+AWS_DEFAULT_REGION: us-east-1
+
+## cognito
+AWS_COGNITO_POOL_NAME: atx-cloud
+AWS_COGNITO_DOMAIN: null
+AWS_COGNITO_USER_POOL_ID: us-east-1_yZkSjc3os
+AWS_COGNITO_USER_POOL_CLIENT_ID: 10irvq63hlelp6aujnrl1ljc0l
+AWS_COGNITO_USER_POOL_CLIENT_SECRET: 17h0p65g76s3iqbrmvaa0hju4qurldejf7vfp39aat0bpnshjlsj
+
+## S3
+S3_BUCKET_NAME: atx-cloud-dev
 
 ## RabbitMQ
 RABBITMQ_HOST: rmq:5672
@@ -16,9 +53,3 @@ RABBITMQ_PASSWORD: defpass
 REDIS_HOST: redis:6379
 REDIS_PORT: 6379
 REDIS_PASSWORD: defpass
-
-#Flask
-MAX_CONTENT_SIZE: 10000000000
-
-
-
