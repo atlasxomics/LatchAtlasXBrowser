@@ -19,8 +19,7 @@ services:
       - 5000:5000
     #restart: always
     volumes:
-      - $PWD/../:/root
-      - /ldata/spatials:/ldata
+      - $PWD/../:/atx-cloud-bin
     environment:
       - TZ=America/New_York
     command: uwsgi --http 0.0.0.0:5000 --module main:app
@@ -64,8 +63,8 @@ services:
     ipc: host
     restart: always
     volumes:
-      - $PWD/..:/root
-      - /ldata/spatials:/ldata
+      - $PWD/..:/worker_root
+      - $HOME:$HOME
     environment:
       - TZ=America/New_York
       - RABBITMQ_HOST=root:defpass@rmq:5672
