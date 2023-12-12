@@ -8,9 +8,6 @@ import argparse
 from flask import Flask
 
 ## App related
-from src.auth import Auth 
-from src.storage import StorageAPI
-from src.tasks import TaskAPI
 from flask import render_template
 
 ## App declaration

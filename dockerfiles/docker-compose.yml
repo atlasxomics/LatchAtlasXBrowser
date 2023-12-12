@@ -8,9 +8,7 @@ volumes:
 services:
   atx-cloud:
     container_name: atx-cloud
-    working_dir: /root
-    networks:
-      - atx-cloud
+    working_dir: /atx-cloud-bin
     image: atx-cloud
     build: . 
     user: 0:0
@@ -23,54 +21,3 @@ services:
     environment:
       - TZ=America/New_York
     command: uwsgi --http 0.0.0.0:5000 --module main:app
-  rmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq
-    hostname: rabbitmq
-    networks:
-      - atx-cloud
-    ipc: host
-    working_dir: /
-    user: 0:0
-    ports:
-      - 5672:5672
-      - 15672:15672
-    restart: always
-    environment:
-      - RABBITMQ_DEFAULT_USER=root
-      - RABBITMQ_DEFAULT_PASS=defpass
-      - TZ=America/New_York
-  redis:
-    image: redis:6.2.0
-    container_name: redis
-    hostname: redis
-    networks:
-      - atx-cloud
-    ipc: host
-    user: 0:0
-    ports:
-      - 6379:6379
-    restart: always
-    command: redis-server --requirepass "defpass"
-  atlasbrowser-worker:
-    container_name: atlasbrowser-worker
-    working_dir: /root/workers
-    networks:
-      - atx-cloud
-    image: aworker
-    build: . 
-    user: 0:0
-    ipc: host
-    restart: always
-    volumes:
-      - $PWD/..:/worker_root
-      - $HOME:$HOME
-    environment:
-      - TZ=America/New_York
-      - RABBITMQ_HOST=root:defpass@rmq:5672
-      - REDIS_HOST=:defpass@redis:6379
-    command: celery -A atlasbrowser worker -n atlasbrowser@${POSTFIX}  -Q atxcloud_atlasbrowser --concurrency=4 --loglevel=INFO
-
-networks:
-  atx-cloud:
-    external: true
