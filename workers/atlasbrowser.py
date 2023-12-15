@@ -60,8 +60,7 @@ def generate_spatial(self, qcparams, **kwargs):
     barcode_root_dir = qcparams['barcode_dir']
     barcode_path = qcparams['barcode_path']
     postB_flag = qcparams['postB_flag']
-    latch_flag = qcparams['latch_flag']
-    postb_path = "{}{}/{}/".format(temp_dir,root_dir, run_id) if not latch_flag else "{}{}/".format(latch_dir,run_id)
+    postb_path = "{}{}/".format(latch_dir,run_id)
     
     updating_existing = qcparams.get('updating_existing', False)
 
@@ -100,15 +99,11 @@ def generate_spatial(self, qcparams, **kwargs):
 
     self.update_state(state="PROGRESS", meta={"position": "running" , "progress" : 20})
     barcodes = None
-    if not latch_flag:
-        with open(temp_dir + barcode_path,'r') as f:
+    try:
+        with open(latch_dir + barcode_path,'r') as f:
             barcodes = f.read().splitlines()
-    else:
-        try:
-            with open(latch_dir + barcode_path,'r') as f:
-                barcodes = f.read().splitlines()
-        except:
-            pass
+    except:
+        pass
     ### save metadata & scalefactors
     local_metadata_filename = local_spatial_dir.joinpath('metadata.json')
     La_local_metadata_filename = La_local_spatial_dir.joinpath('metadata.json')
@@ -128,28 +123,19 @@ def generate_spatial(self, qcparams, **kwargs):
           vals = i.split("/")
           name = vals[len(vals) - 1]
           if "flow" in i.lower() or "fix" in i.lower():
-            if not latch_flag: os.rename("{}/{}/{}/{}".format(temp_dir,root_dir,run_id,name), str(figure_dir.joinpath(name)))
-            else:
-                try:
-                    os.rename("{}/{}/{}".format(latch_dir,run_id,name), str(figure_dir.joinpath(name)))
-                except:
-                    pass
-          elif "bsa" in i.lower():
-              if not latch_flag: bsa_original = Image.open(temp_dir + bsa_path)
-              else: bsa_original = Image.open(bsa_path)
+            try:
+                os.rename("{}/{}/{}".format(latch_dir,run_id,name), str(figure_dir.joinpath(name)))
+            except:
+                pass
+          elif i in bsa_path:
+              bsa_original = Image.open(bsa_path)
               bsa_img_arr = np.array(bsa_original, np.uint8)
               if rotation != 0 :
                   bsa_img_arr = rotate_image_no_cropping(bsa_img_arr, rotation)
-              if not postB_flag:
-                postB_img_arr = bsa_img_arr[:, :, 2]
-                postB_source = Image.fromarray(postB_img_arr)
-              bsa_source = Image.fromarray(bsa_img_arr)
-          elif "postb" in i.lower():
-              postB_original = Image.open(postb_path+name)
-              postB_img_arr = np.array(postB_original, np.uint8)
-              if rotation != 0 :
-                postB_img_arr = rotate_image_no_cropping(postB_img_arr, rotation)
+                  
+              postB_img_arr = bsa_img_arr[:, :, 2]
               postB_source = Image.fromarray(postB_img_arr)
+              bsa_source = Image.fromarray(bsa_img_arr)
               
 
         self.update_state(state="PROGRESS", meta={"position": "running" , "progress" : 45})
