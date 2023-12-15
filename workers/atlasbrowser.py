@@ -201,7 +201,7 @@ def generate_spatial(self, qcparams, **kwargs):
     self.update_state(state="PROGRESS", meta={"position": "running" , "progress" : 75})
     ### generate tissue_positions_list.csv
     local_tissue_positions_filename= local_spatial_dir.joinpath('tissue_positions_list.csv')
-    La_local_tissue_positions_filename= local_spatial_dir.joinpath('tissue_positions_list.csv')
+    La_local_tissue_positions_filename= La_local_spatial_dir.joinpath('tissue_positions_list.csv')
     tissue_positions_list = []
     tixel_pos_list= [x['position'] for x  in tixel_positions]
     # f=open(local_tissue_positions_filename, 'w')
