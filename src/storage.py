@@ -168,7 +168,6 @@ class StorageAPI:
             param_filename= req.get('path', "")
             param_filter=req.get('filter', None)
             only_files = req.get('only_files')
-            flag=req.get('flag')
             try:
                 data= self.getFileList(param_filename, param_filter, only_files)
                 resp=Response(json.dumps(data,default=utils.datetime_handler),status=200)
@@ -189,9 +188,8 @@ class StorageAPI:
             resp=None
             req = request.get_json()
             param_prefix=req.get('prefix', "")
-            flag=req.get('flag')
             try:
-                data= self.get_subfolders(param_prefix, flag)
+                data= self.get_subfolders(param_prefix)
                 resp=Response(json.dumps(data,default=utils.datetime_handler),status=200)
                 resp.headers['Content-Type']='application/json'
             except Exception as e:
@@ -219,10 +217,9 @@ class StorageAPI:
         f.close()
       return bytesIO, size , temp_outpath
 
-    def rotate_file_object(self, relative_path, degree, flag):
+    def rotate_file_object(self, relative_path, degree):
         rel_path = Path(relative_path)
-        if flag == 'true': path = self.ldataDirectory.joinpath(rel_path)
-        else: path = self.tempDirectory.joinpath(rel_path)
+        path = self.ldataDirectory.joinpath(rel_path)
         img = cv2.imread(path.__str__(), cv2.IMREAD_COLOR)
         img = self.rotate_image_no_cropping(img, degree)
         bytesIO = self.get_img_bytes(img)
@@ -259,11 +256,10 @@ class StorageAPI:
         size = bytesIO.getbuffer().nbytes
         return bytesIO, size
 
-    def get_gray_image_rotation_jpg(self, filename, rotation, flag):
+    def get_gray_image_rotation_jpg(self, filename, rotation):
         rel_path = Path(filename)
         path = self.tempDirectory.joinpath(rel_path)
-        if flag == 'true': path = self.ldataDirectory.joinpath(rel_path)
-        else: path = self.tempDirectory.joinpath(rel_path)
+        path = self.ldataDirectory.joinpath(rel_path)
         img=cv2.imread(path.__str__(),cv2.IMREAD_COLOR)
         gray_img = img[:, :, 0]
         if rotation != 0:
@@ -286,8 +282,8 @@ class StorageAPI:
         rotated = cv2.warpAffine(img, M, (bound_w, bound_h))
         return rotated
 
-    def getImage(self,filename, flag):
-        _,_,name = self.getFileObject(filename, flag)
+    def getImage(self,filename):
+        _,_,name = self.getFileObject(filename)
         f=open(name,'rb+')
         bytesIO=io.BytesIO(f.read())
         size=os.fstat(f.fileno()).st_size
@@ -317,9 +313,8 @@ class StorageAPI:
               out.append(r)
         return out
 
-    def get_subfolders(self, prefix, flag):
-      if flag: root_dir = self.ldataDirectory.joinpath(prefix)
-      else: root_dir = self.tempDirectory.joinpath(prefix)
+    def get_subfolders(self, prefix):
+      root_dir = self.ldataDirectory.joinpath(prefix)
       res = []
       for path in glob.glob(f'{root_dir}/*/'):
         ind = [x for x, v in enumerate(path) if v == '/']
