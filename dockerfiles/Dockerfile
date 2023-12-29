@@ -8,3 +8,6 @@ RUN apt-get update -y &&\
     pip3 install pyyaml numpy==1.23.3
 RUN pip3 install opencv-python
 RUN apt-get install libgl1-mesa-glx -y
+
+
+VOLUME /pipe

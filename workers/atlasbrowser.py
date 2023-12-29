@@ -1,5 +1,6 @@
 
 import os
+import subprocess
 import yaml,json,csv
 from PIL import Image
 from pathlib import Path
@@ -8,6 +9,7 @@ from pathlib import Path
 Image.MAX_IMAGE_PIXELS = None
 from celery import Celery
 from celery.signals import worker_process_init
+import time
 
 import numpy as np 
 import utils
@@ -78,21 +80,17 @@ def generate_spatial(self, qcparams, **kwargs):
     La_figure_dir = Path(latch_dir).joinpath(run_id, 'spatial', 'figure')
     ### local temp directories
     ##/root/Images
-    local_spatial_dir = Path(temp_dir).joinpath(spatial_dir)
+    local_spatial_dir = Path(temp_dir).joinpath(run_id, 'spatial')
     La_local_spatial_dir = Path(latch_dir).joinpath(La_spatial_dir)
     # if not local_spatial_dir.exists(): local_spatial_dir.mkdir(parents=True, exist_ok=True)
-    try:
-        if not La_local_spatial_dir.exists(): La_local_spatial_dir.mkdir(parents=True, exist_ok=True)
-    except:
-        pass
+    print('spat')
+    if not local_spatial_dir.exists(): local_spatial_dir.mkdir(parents=True, exist_ok=True)
     
-    local_figure_dir = Path(temp_dir).joinpath(figure_dir)
+    local_figure_dir = Path(temp_dir).joinpath(run_id, 'spatial', 'figure')
     La_local_figure_dir = Path(latch_dir).joinpath(La_figure_dir)
     # if not local_figure_dir.exists(): local_figure_dir.mkdir(parents=True, exist_ok=True)
-    try:
-        if not La_local_figure_dir.exists(): La_local_figure_dir.mkdir(parents=True, exist_ok=True)
-    except:
-        pass
+    print('fig')
+    if not local_figure_dir.exists(): local_figure_dir.mkdir(parents=True, exist_ok=True)
 
     ### read barcodes information 
     row_count = 50
@@ -110,11 +108,7 @@ def generate_spatial(self, qcparams, **kwargs):
     local_scalefactors_filename = local_spatial_dir.joinpath('scalefactors_json.json')
     La_local_scalefactors_filename = La_local_spatial_dir.joinpath('scalefactors_json.json')
     # json.dump(metadata, open(local_metadata_filename,'w'), indent=4,sort_keys=True)
-    try:
-        json.dump(metadata, open(La_local_metadata_filename,'w'), indent=4,sort_keys=True)
-    except:
-        pass
-        
+    json.dump(metadata, open(local_metadata_filename,'w'), indent=4,sort_keys=True)
     # adding metadata and scalefactors to the list to be uploaded to S3 Bucket
     
     if not updating_existing:
@@ -128,8 +122,10 @@ def generate_spatial(self, qcparams, **kwargs):
             except:
                 pass
           elif i in bsa_path:
+              print('good')
               bsa_original = Image.open(bsa_path)
               bsa_img_arr = np.array(bsa_original, np.uint8)
+              bsa_original.close()
               if rotation != 0 :
                   bsa_img_arr = rotate_image_no_cropping(bsa_img_arr, rotation)
                   
@@ -143,23 +139,16 @@ def generate_spatial(self, qcparams, **kwargs):
         ## generate cropped images using crop parameters
         cropped_bsa = bsa_source.crop((crop_coordinates[0], crop_coordinates[1], crop_coordinates[2], crop_coordinates[3]))
         cropped_postB = postB_source.crop((crop_coordinates[0], crop_coordinates[1], crop_coordinates[2], crop_coordinates[3]))
-
+        print(cropped_bsa.size)
         ## high resolution
         tempName_bsa = local_figure_dir.joinpath("postB_BSA.tif")
         tempName_postB = local_figure_dir.joinpath("postB.tif")
         La_tempName_bsa = La_local_figure_dir.joinpath("postB_BSA.tif")
         La_tempName_postB = La_local_figure_dir.joinpath("postB.tif")
-        # cropped_bsa.save(tempName_bsa.__str__())
-        # cropped_postB.save(tempName_postB.__str__())
-        try:
-            cropped_bsa.save(La_tempName_bsa.__str__())
-        except:
-            pass
-        try:
-            cropped_postB.save(La_tempName_postB.__str__())
-        except:
-            pass
-
+        
+        cropped_bsa.save(tempName_bsa.__str__())
+        cropped_postB.save(tempName_postB.__str__())
+        
         height = cropped_postB.height
         width = cropped_postB.width
         self.update_state(state="PROGRESS", meta={"position": "running" , "progress" : 65})
@@ -173,30 +162,19 @@ def generate_spatial(self, qcparams, **kwargs):
             factorLow = 600/height
             high_res = cropped_postB.resize((int(width*factorHigh), 2000), Image.LANCZOS)
             low_res = cropped_postB.resize((int(width*factorLow), 600), Image.LANCZOS)
-
+            
         local_hires_image_path = local_spatial_dir.joinpath('tissue_hires_image.png')
         local_lowres_image_path = local_spatial_dir.joinpath('tissue_lowres_image.png')
         La_local_hires_image_path = La_local_spatial_dir.joinpath('tissue_hires_image.png')
         La_local_lowres_image_path = La_local_spatial_dir.joinpath('tissue_lowres_image.png')
-        # high_res.save(local_hires_image_path.__str__())
-        # low_res.save(local_lowres_image_path.__str__())
-        try:
-            high_res.save(La_local_hires_image_path.__str__())   
-        except:
-            pass
-        try:
-          low_res.save(La_local_lowres_image_path.__str__())  
-        except:
-            pass
+        
+        high_res.save(local_hires_image_path.__str__())
+        low_res.save(local_lowres_image_path.__str__())
         
         scalefactors["tissue_hires_scalef"] = factorHigh
         scalefactors["tissue_lowres_scalef"] = factorLow
     
-        # json.dump(scalefactors, open(local_scalefactors_filename,'w'), indent=4,sort_keys=True)
-        try:
-          json.dump(scalefactors, open(La_local_scalefactors_filename,'w'), indent=4,sort_keys=True)  
-        except:
-            pass
+        json.dump(scalefactors, open(local_scalefactors_filename,'w'), indent=4,sort_keys=True)
         
     self.update_state(state="PROGRESS", meta={"position": "running" , "progress" : 75})
     ### generate tissue_positions_list.csv
@@ -204,22 +182,8 @@ def generate_spatial(self, qcparams, **kwargs):
     La_local_tissue_positions_filename= La_local_spatial_dir.joinpath('tissue_positions_list.csv')
     tissue_positions_list = []
     tixel_pos_list= [x['position'] for x  in tixel_positions]
-    # f=open(local_tissue_positions_filename, 'w')
-    # csvwriter = csv.writer(f, delimiter=',',escapechar=' ',quoting=csv.QUOTE_NONE)
-    # for idx, b in enumerate(barcodes):
-    #     colidx = int(idx/row_count)
-    #     rowidx = idx % row_count
-    #     keyindex = tixel_pos_list.index([rowidx,colidx])
-    #     coord_x = int(round(tixel_positions[keyindex]['coordinates']['x']))
-    #     coord_y = int(round(tixel_positions[keyindex]['coordinates']['y']))
-    #     val = 0
-    #     if tixel_positions[keyindex]['value'] : val = 1
-    #     datarow = [b, val, rowidx, colidx, coord_y , coord_x ]
-    #     tissue_positions_list.append(datarow)    
-    #     csvwriter.writerow(datarow)
-    # f.close()
-    f1=open(La_local_tissue_positions_filename, 'w')
-    csvwriter = csv.writer(f1, delimiter=',',escapechar=' ',quoting=csv.QUOTE_NONE)
+    f=open(local_tissue_positions_filename, 'w')
+    csvwriter = csv.writer(f, delimiter=',',escapechar=' ',quoting=csv.QUOTE_NONE)
     for idx, b in enumerate(barcodes):
         colidx = int(idx/row_count)
         rowidx = idx % row_count
@@ -231,10 +195,11 @@ def generate_spatial(self, qcparams, **kwargs):
         datarow = [b, val, rowidx, colidx, coord_y , coord_x ]
         tissue_positions_list.append(datarow)    
         csvwriter.writerow(datarow)
-    f1.close()
+    f.close()
     self.update_state(state="PROGRESS", meta={"position": "Finishing" , "progress" : 80})
     ### concatenate tissue_positions_to gene expressions
     
-
+    command = f"echo 'latch cp /root/LatchAtlasXBrowser/Images/{run_id}/spatial latch:///spatials/{run_id}' > /pipe/pipeline"
+    subprocess.run(command, shell=True)
     self.update_state(state="PROGRESS", meta={"position": "Finished" , "progress" : 100})
     return 'Finished'
