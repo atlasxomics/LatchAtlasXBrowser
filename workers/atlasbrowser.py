@@ -10,7 +10,8 @@ Image.MAX_IMAGE_PIXELS = None
 from celery import Celery
 from celery.signals import worker_process_init
 import time
-
+import shutil
+import math
 import numpy as np 
 import utils
 import cv2
@@ -83,17 +84,15 @@ def generate_spatial(self, qcparams, **kwargs):
     local_spatial_dir = Path(temp_dir).joinpath(run_id, 'spatial')
     La_local_spatial_dir = Path(latch_dir).joinpath(La_spatial_dir)
     # if not local_spatial_dir.exists(): local_spatial_dir.mkdir(parents=True, exist_ok=True)
-    print('spat')
     if not local_spatial_dir.exists(): local_spatial_dir.mkdir(parents=True, exist_ok=True)
     
     local_figure_dir = Path(temp_dir).joinpath(run_id, 'spatial', 'figure')
     La_local_figure_dir = Path(latch_dir).joinpath(La_figure_dir)
     # if not local_figure_dir.exists(): local_figure_dir.mkdir(parents=True, exist_ok=True)
-    print('fig')
     if not local_figure_dir.exists(): local_figure_dir.mkdir(parents=True, exist_ok=True)
 
     ### read barcodes information 
-    row_count = 50
+    
 
     self.update_state(state="PROGRESS", meta={"position": "running" , "progress" : 20})
     barcodes = None
@@ -102,6 +101,7 @@ def generate_spatial(self, qcparams, **kwargs):
             barcodes = f.read().splitlines()
     except:
         pass
+    row_count = math.sqrt(len(barcodes))
     ### save metadata & scalefactors
     local_metadata_filename = local_spatial_dir.joinpath('metadata.json')
     La_local_metadata_filename = La_local_spatial_dir.joinpath('metadata.json')
@@ -122,7 +122,6 @@ def generate_spatial(self, qcparams, **kwargs):
             except:
                 pass
           elif i in bsa_path:
-              print('good')
               bsa_original = Image.open(bsa_path)
               bsa_img_arr = np.array(bsa_original, np.uint8)
               bsa_original.close()
@@ -139,7 +138,6 @@ def generate_spatial(self, qcparams, **kwargs):
         ## generate cropped images using crop parameters
         cropped_bsa = bsa_source.crop((crop_coordinates[0], crop_coordinates[1], crop_coordinates[2], crop_coordinates[3]))
         cropped_postB = postB_source.crop((crop_coordinates[0], crop_coordinates[1], crop_coordinates[2], crop_coordinates[3]))
-        print(cropped_bsa.size)
         ## high resolution
         tempName_bsa = local_figure_dir.joinpath("postB_BSA.tif")
         tempName_postB = local_figure_dir.joinpath("postB.tif")
@@ -198,8 +196,7 @@ def generate_spatial(self, qcparams, **kwargs):
     f.close()
     self.update_state(state="PROGRESS", meta={"position": "Finishing" , "progress" : 80})
     ### concatenate tissue_positions_to gene expressions
-    
-    command = f"echo 'latch cp /root/LatchAtlasXBrowser/Images/{run_id}/spatial latch:///spatials/{run_id}' > /pipe/pipeline"
+    command = f"echo 'latch cp /root/LatchAtlasXBrowser/Images/{run_id}/spatial latch:///spatials/{run_id}; rm -rf /root/LatchAtlasXBrowser/Images/{run_id}' > /pipe/pipeline"
     subprocess.run(command, shell=True)
     self.update_state(state="PROGRESS", meta={"position": "Finished" , "progress" : 100})
     return 'Finished'
