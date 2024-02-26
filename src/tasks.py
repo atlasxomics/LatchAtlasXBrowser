@@ -22,15 +22,11 @@ from celery.result import AsyncResult
 
 class TaskAPI:
     def __init__(self,app,**kwargs):
-
         self.app=app
         CORS(self.app)
         self.tempDirectory=Path(self.app.config['TEMP_DIRECTORY'])
-        self.broker="amqp://{}:{}@{}".format(self.app.config['RABBITMQ_USERNAME'],
-                                              self.app.config['RABBITMQ_PASSWORD'],
-                                              self.app.config['RABBITMQ_HOST'])
-        self.backend="redis://:{}@{}".format( self.app.config['REDIS_PASSWORD'],
-                                              self.app.config['REDIS_HOST'])
+        self.broker="amqp://guest:guest@localhost:5672"
+        self.backend="redis://localhost:6379"
         self.celery=Celery('tasks', backend=self.backend, broker=self.broker)
         self.initialize()
         self.initEndpoints()

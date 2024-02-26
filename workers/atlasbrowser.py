@@ -16,7 +16,7 @@ import numpy as np
 import utils
 import cv2
 
-app=Celery('atlasbrowser_task',broker='amqp://'+os.environ['RABBITMQ_HOST'],backend='redis://'+os.environ['REDIS_HOST'])
+app=Celery('atlasbrowser_task',broker='amqp://guest:guest@localhost:5672',backend='redis://localhost:6379')
 
 @worker_process_init.connect()
 def on_worker_init(**_):
