@@ -258,7 +258,6 @@ class StorageAPI:
 
     def get_gray_image_rotation_jpg(self, filename, rotation):
         rel_path = Path(filename)
-        path = self.tempDirectory.joinpath(rel_path)
         path = self.ldataDirectory.joinpath(rel_path)
         img=cv2.imread(path.__str__(),cv2.IMREAD_COLOR)
         gray_img = img[:, :, 0]
