@@ -16,7 +16,7 @@ from flask import render_template
 ## arguments
 
 parser = argparse.ArgumentParser(prog="AtlasCloud")
-parser.add_argument('--config',help='configuration file',default='config.yml',type=str)
+parser.add_argument('--config',help='configuration file',default='/root/LatchAtlasXBrowser/config.yml',type=str)
 args=parser.parse_args()
 
 ## App declaration
@@ -27,7 +27,7 @@ def hello():
 ## loading configuration
 config_filename=args.config
 print("Config Filename is : {}".format(config_filename))
-version_filename="version.yml"
+version_filename="/root/LatchAtlasXBrowser/version.yml"
 config=yaml.safe_load(open(config_filename,'r'))    
 version=yaml.safe_load(open(version_filename,'r'))
 app.config.update(config)
