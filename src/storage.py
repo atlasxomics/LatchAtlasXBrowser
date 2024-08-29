@@ -201,9 +201,63 @@ class StorageAPI:
             finally:
                 return resp   
      
-            
+        @self.auth.app.route('/api/v1/storage/remove_color_channel', methods=['GET'])
+        def _removeChannel():
+            sc=200
+            res=None
+            resp=None
+            param_filename=request.args.get('filename',type=str)
+            color = request.args.get('color', type=str)
+            try:
+                data_bytesio,_,size,_= self.removeChannel(param_filename, color)
+                resp=Response(data_bytesio,status=200)
+                resp.headers['Content-Length']=size
+                resp.headers['Content-Type']='application/octet-stream'
+            except Exception as e:
+                exc=traceback.format_exc()
+                res=utils.error_message("Exception : {} {}".format(str(e),exc),500)
+                resp=Response(json.dumps(res),status=res['status_code'])
+                resp.headers['Content-Type']='application/json'
+                print(res)
+            finally:
+                return resp
+
+        @self.auth.app.route('/api/v1/storage/check_exists', methods=['GET'])
+        def _checkFileExists():
+            sc = 200
+            path = request.args.get('filename', type=str)
+            bucket_name = request.args.get('bucket_name')
+            # code, tf = self.checkFileExists(bucket_name=bucket_name, filename=path)
+            if os.path.exists(path):
+                dic = {"code": True}
+                resp = Response(json.dumps(dic), status = 200)
+                resp.headers['Content-Type'] = "application/json"
+            else:
+                dic = {"code": False}
+                resp = Response(json.dumps(dic), status=200)
+                resp.headers['Content-Type'] = 'application/json'
+            return resp  
+              
 ###### actual methods
 
+    def removeChannel(self, filename, color):
+      _,_,name = self.getFileObject(filename)
+      img=cv2.imread(name.__str__(),cv2.IMREAD_COLOR)
+      ext=Path(name).suffix
+      b, g, r = cv2.split(img)
+      if color == 'Red':
+        bytesIO = self.get_img_bytes(r)
+        size = bytesIO.getbuffer().nbytes
+        return bytesIO, ext, size , name.__str__()
+      elif color == 'Blue':
+        bytesIO = self.get_img_bytes(b)
+        size = bytesIO.getbuffer().nbytes
+        return bytesIO, ext, size , name.__str__()
+      elif color == 'Green':
+        bytesIO = self.get_img_bytes(g)
+        size = bytesIO.getbuffer().nbytes
+        return bytesIO, ext, size , name.__str__()
+    
     def getFileObject(self,filename):
       temp_outpath=self.ldataDirectory.joinpath(filename)
       print(temp_outpath)
