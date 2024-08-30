@@ -201,7 +201,7 @@ class StorageAPI:
             finally:
                 return resp   
      
-        @self.auth.app.route('/api/v1/storage/remove_color_channel', methods=['GET'])
+        @self.app.route('/api/v1/storage/remove_color_channel', methods=['GET'])
         def _removeChannel():
             sc=200
             res=None
@@ -222,7 +222,7 @@ class StorageAPI:
             finally:
                 return resp
 
-        @self.auth.app.route('/api/v1/storage/check_exists', methods=['GET'])
+        @self.app.route('/api/v1/storage/check_exists', methods=['GET'])
         def _checkFileExists():
             sc = 200
             path = request.args.get('filename', type=str)
