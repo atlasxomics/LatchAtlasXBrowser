@@ -8,7 +8,7 @@ import utils
 import subprocess
 import time
 
-app=Celery('nuclei_task',broker='amqp://'+os.environ['RABBITMQ_HOST'],backend='redis://'+os.environ['REDIS_HOST'])
+app=Celery('atlasbrowser_task',broker='amqp://guest:guest@localhost:5672',backend='redis://localhost:6379')
 
 def sleeper():
     time.sleep(20)
