@@ -1,21 +1,10 @@
 
 import os
-from threading import local
-import yaml,json,csv
-import PIL
-from PIL import Image
+import yaml
 from pathlib import Path
-import shutil
-import pandas as pd
-from matplotlib.image import imread
-import json
-from pathlib import Path
-Image.MAX_IMAGE_PIXELS = None
 from celery import Celery
 from celery.signals import worker_process_init
 import utils
-import cv2
-import math
 import subprocess
 import time
 
