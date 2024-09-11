@@ -226,9 +226,8 @@ class StorageAPI:
         def _checkFileExists():
             sc = 200
             path = request.args.get('filename', type=str)
-            bucket_name = request.args.get('bucket_name')
-            # code, tf = self.checkFileExists(bucket_name=bucket_name, filename=path)
-            if os.path.exists(path):
+            temp_outpath=self.ldataDirectory.joinpath(path)
+            if os.path.exists(temp_outpath):
                 dic = {"code": True}
                 resp = Response(json.dumps(dic), status = 200)
                 resp.headers['Content-Type'] = "application/json"
@@ -377,27 +376,31 @@ class StorageAPI:
 
     def getFileList(self, root_path, fltr=None, only_files = False): #get all pages
       #alter this to be a lambda function that filters based on the filters and also whether the object is a file or a folder
-      def checkList(value, list):
+      def checkList(roots, value, list):
+        full_path = roots.__str__() + '/' + value
         #can exclude an option if it is only looking for files and finds a folder
         if only_files and value.is_dir():
           return False
         if fltr is not None:
-          for i in list:
-            #know an option is valid if after passing the first condtion, it matches a filter
-            if (i.lower() in value.name.lower()): 
-              return value.name
-          #if filter is true but it doesnt match any filter, then it is not valid
-          return False
-        # if it doesn't have a filter and passed the only files condition, then it is valid
-        return value.name
+          for root, dirs, files in os.walk(full_path):
+            for file_name in files:
+              # Get the full path of the file and append it to the list
+              for search_word in list:
+                full_path = os.path.join(root, file_name)
+                if search_word.lower() in full_path.lower():
+                  return True
+                  
+        return False
       
       root_dir = self.ldataDirectory.joinpath(root_path)
       res=[]
       for path in os.scandir(root_dir):
         temp = path.name
         if fltr is not None or only_files:
-          temp = checkList(path, fltr)
-        if temp != False: res.append(temp)
+          check = checkList(root_dir, temp, fltr)
+        if check != False:
+            returned_path = "/" + temp.__str__()
+            res.append(returned_path)
       return res 
 
     def checkFileExists(self, filename):
