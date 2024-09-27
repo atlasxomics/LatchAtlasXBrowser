@@ -4,7 +4,6 @@
 ###
 ###
 ###
-### Written by : scalphunter@gmail.com ,  2021/08/04
 ### Copyrighted reserved by AtlasXomics
 ##################################################################################
 
@@ -377,6 +376,7 @@ class StorageAPI:
     def getFileList(self, root_path, fltr=None, only_files = False): #get all pages
       #alter this to be a lambda function that filters based on the filters and also whether the object is a file or a folder
       def checkList(roots, value, listt):
+          def checkList(roots, value, listt):
         full_path = roots.__str__() + '/' + value
         #can exclude an option if it is only looking for files and finds a folder
         if only_files and value.is_dir():
@@ -386,6 +386,7 @@ class StorageAPI:
             for file_name in files:
               # Get the full path of the file and append it to the list
               for search_word in listt:
+                  for search_word in listt:
                 full_path = os.path.join(root, file_name)
                 if search_word.lower() in full_path.lower():
                   return True
@@ -409,3 +410,4 @@ class StorageAPI:
       except:
         return False
     
+
