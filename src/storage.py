@@ -376,7 +376,7 @@ class StorageAPI:
 
     def getFileList(self, root_path, fltr=None, only_files = False): #get all pages
       #alter this to be a lambda function that filters based on the filters and also whether the object is a file or a folder
-      def checkList(roots, value, list):
+      def checkList(roots, value, listt):
         full_path = roots.__str__() + '/' + value
         #can exclude an option if it is only looking for files and finds a folder
         if only_files and value.is_dir():
@@ -385,7 +385,7 @@ class StorageAPI:
           for root, dirs, files in os.walk(full_path):
             for file_name in files:
               # Get the full path of the file and append it to the list
-              for search_word in list:
+              for search_word in listt:
                 full_path = os.path.join(root, file_name)
                 if search_word.lower() in full_path.lower():
                   return True
@@ -394,13 +394,12 @@ class StorageAPI:
       
       root_dir = self.ldataDirectory.joinpath(root_path)
       res=[]
+      check = False
       for path in os.scandir(root_dir):
         temp = path.name
         if fltr is not None or only_files:
           check = checkList(root_dir, temp, fltr)
-        if check != False:
-            returned_path = "/" + temp.__str__()
-            res.append(returned_path)
+        if check != False: res.append(temp)
       return res 
 
     def checkFileExists(self, filename):
@@ -410,4 +409,3 @@ class StorageAPI:
       except:
         return False
     
-
