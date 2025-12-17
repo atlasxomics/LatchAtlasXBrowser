@@ -41,7 +41,8 @@ class StorageAPI:
 
     def initEndpoints(self):
         @self.app.route('/api/v1/storage',methods=['GET'])
-        def _getFileObject():
+        @self.app.route('/<path:_prefix>/api/v1/storage',methods=['GET'])
+        def _getFileObject(_prefix=None):
             sc=200
             res=None
             resp=None
@@ -60,7 +61,8 @@ class StorageAPI:
                 return resp    
               
         @self.app.route('/api/v1/storage/image_as_jpg',methods=['GET'])
-        def _getFileObjectAsJPG():
+        @self.app.route('/<path:_prefix>/api/v1/storage/image_as_jpg',methods=['GET'])
+        def _getFileObjectAsJPG(_prefix=None):
             sc=200
             res=None
             resp=None
@@ -81,7 +83,8 @@ class StorageAPI:
                 return resp
 
         @self.app.route('/api/v1/storage/png',methods=['GET'])
-        def _getFileObjectAsPNG():
+        @self.app.route('/<path:_prefix>/api/v1/storage/png',methods=['GET'])
+        def _getFileObjectAsPNG(_prefix=None):
             sc=200
             res=None
             resp=None
@@ -99,7 +102,8 @@ class StorageAPI:
                 return resp    
 
         @self.app.route('/api/v1/storage/grayscale_image_jpg_cropping', methods=['GET'])
-        def _getGrayImage():
+        @self.app.route('/<path:_prefix>/api/v1/storage/grayscale_image_jpg_cropping', methods=['GET'])
+        def _getGrayImage(_prefix=None):
             sc = 200
             res = None
             resp = None
@@ -123,7 +127,8 @@ class StorageAPI:
                 return resp    
         
         @self.app.route('/api/v1/storage/json',methods=['GET']) ### return json object from csv file
-        def _getJsonFromFile():
+        @self.app.route('/<path:_prefix>/api/v1/storage/json',methods=['GET']) ### return json object from csv file
+        def _getJsonFromFile(_prefix=None):
             sc=200
             res=None
             resp=None
@@ -141,7 +146,8 @@ class StorageAPI:
                 return resp  
 
         @self.app.route('/api/v1/storage/csv',methods=['GET']) ### return json object from csv file
-        def _getCsvFileAsJson():
+        @self.app.route('/<path:_prefix>/api/v1/storage/csv',methods=['GET']) ### return json object from csv file
+        def _getCsvFileAsJson(_prefix=None):
             sc=200
             res=None
             resp=None
@@ -160,7 +166,8 @@ class StorageAPI:
   
 
         @self.app.route('/api/v1/storage/list',methods=['POST'])
-        def _getFileList():
+        @self.app.route('/<path:_prefix>/api/v1/storage/list',methods=['POST'])
+        def _getFileList(_prefix=None):
             sc=200
             res=None
             resp=None
@@ -182,7 +189,8 @@ class StorageAPI:
                 return resp   
 
         @self.app.route('/api/v1/storage/sub_folders',methods=['POST'])
-        def _getSubFolders():
+        @self.app.route('/<path:_prefix>/api/v1/storage/sub_folders',methods=['POST'])
+        def _getSubFolders(_prefix=None):
             sc=200
             res=None
             resp=None
@@ -353,4 +361,3 @@ class StorageAPI:
       except:
         return False
     
-
