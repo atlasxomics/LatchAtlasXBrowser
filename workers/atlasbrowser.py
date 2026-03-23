@@ -71,7 +71,8 @@ def generate_spatial(self, qcparams, **kwargs):
     metadata["replaced_24_barcodes"] = next_gen_barcodes
 
     ### source image path
-    allFiles = [i for i in oldFiles if '.json' not in i and 'spatial' not in i]
+    allFiles = [i for i in oldFiles if '.json' not in i
+                and 'spatial' not in i.split('/')[:-1]]
     ### output directories (S3)
     ##Images
     spatial_dir = Path(root_dir).joinpath(run_id, 'spatial')
