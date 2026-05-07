@@ -41,6 +41,16 @@ def rotate_image_no_cropping(img, degree):
     M[1, 2] += bound_h/2 - cY
     rotated = cv2.warpAffine(img, M, (bound_w, bound_h))
     return rotated
+
+def extract_postb_channel(img_arr):
+    if img_arr.ndim == 2:
+        return img_arr
+    if img_arr.ndim == 3:
+        channel_index = 2 if img_arr.shape[2] >= 3 else 0
+        return img_arr[:, :, channel_index]
+
+    raise ValueError(f"Unsupported BSA image shape: {img_arr.shape}")
+
 @app.task(bind=True)
 def generate_spatial(self, qcparams, **kwargs):
     self.update_state(state="STARTED")
@@ -116,7 +126,7 @@ def generate_spatial(self, qcparams, **kwargs):
               if rotation != 0 :
                   bsa_img_arr = rotate_image_no_cropping(bsa_img_arr, rotation)
                   
-              postB_img_arr = bsa_img_arr[:, :, 2]
+              postB_img_arr = extract_postb_channel(bsa_img_arr)
               postB_source = Image.fromarray(postB_img_arr)
               bsa_source = Image.fromarray(bsa_img_arr)
               

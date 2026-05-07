@@ -244,11 +244,21 @@ class StorageAPI:
     def crop_image(self,img, x1, x2, y1, y2):
         return img[y1: y2, x1: x2]
 
+    def extract_gray_channel(self, img):
+        if img is None:
+            raise ValueError("Unable to read image")
+        if img.ndim == 2:
+            return img
+        if img.ndim == 3:
+            return img[:, :, 0]
+
+        raise ValueError(f"Unsupported image shape: {img.shape}")
+
     def get_gray_image_rotation_cropping_jpg(self, filename, rotation, x1, x2, y1, y2):
         rel_path = Path(filename)
         path = self.ldataDirectory.joinpath(rel_path)
         img=cv2.imread(path.__str__(),cv2.IMREAD_COLOR)
-        gray_img = img[:, :, 0]
+        gray_img = self.extract_gray_channel(img)
         if rotation != 0:
             gray_img = self.rotate_image_no_cropping(gray_img, rotation)
         cropped = self.crop_image(gray_img, x1, x2, y1, y2)
@@ -260,7 +270,7 @@ class StorageAPI:
         rel_path = Path(filename)
         path = self.ldataDirectory.joinpath(rel_path)
         img=cv2.imread(path.__str__(),cv2.IMREAD_COLOR)
-        gray_img = img[:, :, 0]
+        gray_img = self.extract_gray_channel(img)
         if rotation != 0:
             gray_img = self.rotate_image_no_cropping(gray_img, rotation)
         bytesIO = self.get_img_bytes(gray_img)
@@ -353,4 +363,3 @@ class StorageAPI:
       except:
         return False
     
-
