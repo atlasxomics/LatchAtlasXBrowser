@@ -41,7 +41,8 @@ class TaskAPI:
 
 #### Task posting
         @self.app.route('/api/v1/task',methods=['POST'])
-        def _runTask():
+        @self.app.route('/<path:_prefix>/api/v1/task',methods=['POST'])
+        def _runTask(_prefix=None):
             sc=200
             res=None
             req=request.get_json()
@@ -60,7 +61,8 @@ class TaskAPI:
 
 #### Task status check and retrieve the result if out
         @self.app.route('/api/v1/task/<task_id>',methods=['GET'])
-        def _getTaskStatus(task_id):
+        @self.app.route('/<path:_prefix>/api/v1/task/<task_id>',methods=['GET'])
+        def _getTaskStatus(task_id, _prefix=None):
             sc=200
             res=None
             try:
@@ -142,4 +144,3 @@ class TaskAPI:
         res = self.celery.control.inspect().query_task(task_list)
         print(res)
         return res
-
