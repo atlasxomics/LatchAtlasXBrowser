@@ -45,8 +45,18 @@ def generate_position_files(self, qcparams, **kwargs):
     tissue_position = ldataDirectory.joinpath(og_tissue_positions_filename)
 
     self.update_state(state="PROGRESS", meta={"position": "running" , "progress" : 20})
-    command = f"python /root/nuclei-count/concat_cell_counts.py {dapi_path} {tissue_position} {tixel_width} {user_given_count} {color_chan} {min_area_in_tixel} {run_id}"
-    subprocess.run(command, shell=True)
+    command = [
+        "python",
+        "/root/nuclei-count/concat_cell_counts.py",
+        str(dapi_path),
+        str(tissue_position),
+        str(tixel_width),
+        str(user_given_count),
+        str(color_chan),
+        str(min_area_in_tixel),
+        str(run_id),
+    ]
+    subprocess.run(command)
     
 
         
@@ -58,4 +68,3 @@ def generate_position_files(self, qcparams, **kwargs):
         out = 'Fail'
         
     return out
-
