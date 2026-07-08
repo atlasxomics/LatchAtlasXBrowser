@@ -189,7 +189,11 @@ def generate_spatial(self, qcparams, **kwargs):
     f.close()
     self.update_state(state="PROGRESS", meta={"position": "Finishing" , "progress" : 80})
     ### concatenate tissue_positions_to gene expressions
-    command = f"latch cp /root/LatchAtlasXBrowser/Images/{run_id}/spatial latch:///spatials/{run_id} && rm -rf /root/LatchAtlasXBrowser/Images/{run_id}"
-    subprocess.run(command, shell=True)
+    run_dir = Path(root_dir).joinpath(run_id)
+    subprocess.run(
+        ["latch", "cp", str(spatial_dir), f"latch:///spatials/{run_id}"],
+        check=True,
+    )
+    shutil.rmtree(run_dir, ignore_errors=True)
     self.update_state(state="PROGRESS", meta={"position": "Finished" , "progress" : 100})
     return 'Finished'
